@@ -1,6 +1,6 @@
 import asyncio
 from ctypes import *
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import win32api, win32process, win32con, win32gui
 import psutil
 import os.path
@@ -95,7 +95,7 @@ def read_current_name(pid: int) -> str:
     return result
 
 
-def get_nostale_windows():
+def get_nostale_windows() -> List[Dict[str, int]]:
     def callback(hwnd, hwnds):
         if not win32gui.IsWindowVisible(hwnd) and win32gui.IsWindowEnabled(hwnd):
             return
@@ -109,7 +109,7 @@ def get_nostale_windows():
     return windows
 
 
-def get_nostale_windows_wo_packet_logger():
+def get_nostale_windows_wo_packet_logger() -> List[Dict[str, int]]:
     windows = []
     for window in get_nostale_windows():
         process = psutil.Process(window["pid"])
@@ -121,12 +121,12 @@ def get_nostale_windows_wo_packet_logger():
     return windows
 
 
-def get_packet_logger_path(nostale_pid: int):
+def get_packet_logger_path(nostale_pid: int) -> str:
     process = psutil.Process(nostale_pid)
     return os.path.dirname(process.exe()) + "/PacketLogger.dll"
 
 
-def get_packet_logger_port(packet_logger: Dict[str, int]):
+def get_packet_logger_port(packet_logger: Dict[str, int]) -> int:
     process = psutil.Process(packet_logger["pid"])
     for connection in process.connections():
         if connection.laddr and connection.laddr.ip == "127.0.0.1":
@@ -134,7 +134,7 @@ def get_packet_logger_port(packet_logger: Dict[str, int]):
     return 0
 
 
-def get_packet_logger_windows():
+def get_packet_logger_windows() -> List[Dict[str, int]]:
     def callback(hwnd, hwnds):
         if not win32gui.IsWindowEnabled(hwnd):
             return
@@ -172,7 +172,7 @@ def rename_nostale_window(window: Dict[str, int], packet_logger_port: int):
     )
 
 
-async def setup_client(window):
+async def setup_client(window) -> Tuple[str, int]:
     inject_packet_logger(window["pid"])
     await asyncio.sleep(1)  # wait for packet logger to start
     packet_logger = list(filter(lambda x: x["pid"] == window["pid"], get_packet_logger_windows()))[0]
@@ -181,7 +181,7 @@ async def setup_client(window):
     return window["pid"], get_packet_logger_port(packet_logger)
 
 
-async def setup_all_clients():
+async def setup_all_clients() -> List[Tuple[str, int]]:
     windows = get_nostale_windows_wo_packet_logger()
     return await asyncio.gather(*[setup_client(window) for window in windows])
 
