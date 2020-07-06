@@ -165,7 +165,7 @@ def hide_window(window: Dict[str, int]):
 def rename_nostale_window(window: Dict[str, int], packet_logger_port: int):
     win32gui.SetWindowText(
         window["hwnd"],
-        f"Nostale CHAR_ID: {read_current_name(window['pid'])} PL_PORT: {packet_logger_port}"
+        f"NosTale CHAR_ID: {read_current_name(window['pid'])} PL_PORT: {packet_logger_port}"
     )
 
 
