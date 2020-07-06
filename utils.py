@@ -3,6 +3,7 @@ from ctypes import *
 from typing import List, Dict
 import win32api, win32process, win32con, win32gui
 import psutil
+import os.path
 
 from injector import Injector
 
@@ -36,9 +37,6 @@ __INDEXES = {
     2: __THIRD_CHARACTER,
     3: __FOURTH_CHARACTER,
 }
-
-# should be able to get it from process.exe()
-__PACKET_LOGGER_PATH = r"C:\Program Files (x86)\GameforgeClient\Nostale\en-GB\PacketLogger.dll"
 
 
 def _read_pointers(process_handle, base: int, offsets: List[int], pointer_size: int = 4) -> int:
@@ -123,6 +121,11 @@ def get_nostale_windows_wo_packet_logger():
     return windows
 
 
+def get_packet_logger_path(nostale_pid: int):
+    process = psutil.Process(nostale_pid)
+    return os.path.dirname(process.exe()) + "/PacketLogger.dll"
+
+
 def get_packet_logger_port(packet_logger: Dict[str, int]):
     process = psutil.Process(packet_logger["pid"])
     for connection in process.connections():
@@ -133,7 +136,7 @@ def get_packet_logger_port(packet_logger: Dict[str, int]):
 
 def get_packet_logger_windows():
     def callback(hwnd, hwnds):
-        if not win32gui.IsWindowVisible(hwnd) and win32gui.IsWindowEnabled(hwnd):
+        if not win32gui.IsWindowEnabled(hwnd):
             return
         if "PacketLogger" not in win32gui.GetWindowText(hwnd):
             return
@@ -148,7 +151,7 @@ def get_packet_logger_windows():
 def inject_packet_logger(pid: int):
     injector = Injector()
     injector.load_from_pid(pid)
-    injector.inject_dll(__PACKET_LOGGER_PATH)
+    injector.inject_dll(get_packet_logger_path(pid))
 
 
 def hide_window(window: Dict[str, int]):
