@@ -9,7 +9,24 @@ Inject packet logger into all Nostale instances, hide packetlogger and rename No
 from utils import setup_all_clients
 from asyncio import run
 
-run(setup_all_clients())
+ports = run(setup_all_clients())
+```
+
+## Example 2:
+If you want to hide packetlogger windows, you can do it like this.
+```python
+from utils import hide_window, get_packet_logger_windows 
+
+for window in get_packet_logger_windows():
+    hide_window(window)
+```
+
+## Example 3:
+Read Nostale client names without having to inject packetlogger
+```python
+from utils import get_nostale_windows, read_current_name
+
+pid_name_pairs = [(window["pid"], read_current_name(window["pid"])) for window in get_nostale_windows()]
 ```
 
 # Links:
