@@ -1,5 +1,10 @@
 # A set of utils that can be used with Nostale PacketLogger
 
+## Installation:
+```shell script
+pip install pywin32 psutil
+```
+
 ## Example 1:
 Inject packet logger into all Nostale instances, hide packetlogger and rename Nostale client to this format 
 `Nostale CHAR_ID: {character_name} PL_PORT: {pl_port}`
