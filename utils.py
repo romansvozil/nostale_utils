@@ -175,11 +175,12 @@ async def setup_client(window):
     packet_logger = list(filter(lambda x: x["pid"] == window["pid"], get_packet_logger_windows()))[0]
     hide_window(packet_logger)
     rename_nostale_window(window, get_packet_logger_port(packet_logger))
+    return get_packet_logger_port(packet_logger)
 
 
 async def setup_all_clients():
     windows = get_nostale_windows_wo_packet_logger()
-    await asyncio.gather(*[setup_client(window) for window in windows])
+    return await asyncio.gather(*[setup_client(window) for window in windows])
 
 if __name__ == '__main__':
     asyncio.run(setup_all_clients())
