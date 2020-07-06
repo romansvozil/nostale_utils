@@ -11,10 +11,16 @@ Inject packet logger into all Nostale instances, hide packetlogger and rename No
 ![alt text](https://raw.githubusercontent.com/romansvozil/nostale_packet_logger_utils/master/images/example_1.PNG "Example 1")
 
 ```python
-from utils import setup_all_clients
+from utils import setup_all_clients, read_current_name
 from asyncio import run
 
-ports = run(setup_all_clients())
+pid_port_pairs = run(setup_all_clients())
+
+for pid, port in pid_port_pairs:
+    print(f"{read_current_name(pid)}: \t{port}")
+
+# Output: 
+# InGameName: 	55154
 ```
 
 ## Example 2:
