@@ -1,4 +1,4 @@
-# A set of utils that can be used with Nostale PacketLogger
+# NosTale utils
 
 ## Installation:
 ```shell script
