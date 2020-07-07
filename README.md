@@ -76,7 +76,7 @@ def handle_basic_packets(packet):
 packet_logger.add_callback(handle_basic_packets)
 
 while True:
-    print(f"Name: {player.name} ID: {player.id} X: {player.x} Y: {player.y} Speed: {player.speed}")
+    print(player)
     sleep(1)
 ```
 
