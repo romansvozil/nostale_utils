@@ -192,7 +192,7 @@ async def setup_all_clients() -> List[Tuple[int, int]]:
 class PacketLoggerWrapper:
     IP: str = "127.0.0.1"
     PACKET_SIZE: int = 4096
-    ENCODING = "windows-1252"
+    ENCODING: str = "windows-1252"
 
     def __init__(self, port: int):
         self._port = port
@@ -241,7 +241,7 @@ class PacketLoggerWrapper:
     def remove_callback(self, callback: Callable):
         self._callbacks.remove(callback)
 
-    async def wait_for_packet(self, selector: Callable, timeout: float = -1):
+    async def wait_for_packet(self, selector: Callable, timeout: float = -1) -> Optional[List[str]]:
         result = None
 
         def callback(packet: List[str]):
