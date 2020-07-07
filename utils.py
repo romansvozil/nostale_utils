@@ -188,7 +188,6 @@ async def setup_all_clients() -> List[Tuple[int, int]]:
     return await asyncio.gather(*[setup_client(window) for window in windows])
 
 
-## Not tested yet, but should work
 class PacketLoggerWrapper:
     IP: str = "127.0.0.1"
     PACKET_SIZE: int = 4096
@@ -225,11 +224,10 @@ class PacketLoggerWrapper:
         await asyncio.gather(self._receive_task(), self._send_task())
         print("Stop serving.")
 
+    def serve(self):
+        threading.Thread(target=lambda: asyncio.run(self._serve())).start()
+
     def send_raw(self, packet: str):
-        # packet has to be in format:
-        # "<0 or 1> <real data>"
-        # Example:
-        # "1 preq" -> sends packet to use portal
         self._send_queue.put(packet)
 
     def send(self, packet: str):
@@ -237,9 +235,6 @@ class PacketLoggerWrapper:
 
     def recv(self, packet: str):
         self.send_raw(" ".join(["0", packet]))
-
-    def serve(self):
-        threading.Thread(target=lambda: asyncio.run(self._serve())).start()
 
     def add_callback(self, callback: Callable):
         self._callbacks.append(callback)
