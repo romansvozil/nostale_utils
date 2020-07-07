@@ -41,6 +41,46 @@ run(wait_for_map_change())
 ```
 
 ## Example 3:
+You can also create custom classes that represents for example your Character
+```python
+from dataclasses import dataclass
+from utils import PacketLoggerWrapper
+from time import sleep
+
+@dataclass
+class Player:
+    id: int = 0
+    name: str = 0
+    x: int = 0
+    y: int = 0
+    speed: int = 0
+
+packet_logger = PacketLoggerWrapper(63337)
+packet_logger.serve()
+
+player = Player()
+
+def handle_basic_packets(packet):
+    if len(packet) < 2:
+        # ignore
+        return
+    if packet[1] == "c_info":
+        player.name = packet[2]
+        player.id = int(packet[7])
+    elif packet[1] == "walk":
+        player.x = int(packet[2])
+        player.y = int(packet[3])
+        player.speed = int(packet[5])
+    # and many more packets
+
+packet_logger.add_callback(handle_basic_packets)
+
+while True:
+    print(f"Name: {player.name} ID: {player.id} X: {player.x} Y: {player.y} Speed: {player.speed}")
+    sleep(1)
+```
+
+## Example 4:
 If you want to hide packetlogger windows, you can do it like this.
 ```python
 from utils import hide_window, get_packet_logger_windows 
@@ -49,7 +89,7 @@ for window in get_packet_logger_windows():
     hide_window(window)
 ```
 
-## Example 4:
+## Example 5:
 Read Nostale client names without having to inject packetlogger
 ```python
 from utils import get_nostale_windows, read_current_name
