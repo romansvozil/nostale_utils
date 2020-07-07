@@ -24,6 +24,24 @@ for pid, port in pid_port_pairs:
 ```
 
 ## Example 2:
+Creating PacketLoggerWrapper instance and waiting on map change
+```python
+from utils import setup_all_clients, PacketLoggerWrapper
+from asyncio import run
+
+async def wait_for_map_change():
+    ports = await setup_all_clients()
+    packet_logger = PacketLoggerWrapper(ports[0][1])
+    packet_logger.serve()
+    while True:
+        print("Waiting for map change.")
+        if await packet_logger.wait_for_packet(lambda _packet: _packet[1] == "c_map"):
+            print("Map have been changed.")
+
+run(wait_for_map_change())
+```
+
+## Example 3:
 If you want to hide packetlogger windows, you can do it like this.
 ```python
 from utils import hide_window, get_packet_logger_windows 
@@ -32,7 +50,7 @@ for window in get_packet_logger_windows():
     hide_window(window)
 ```
 
-## Example 3:
+## Example 4:
 Read Nostale client names without having to inject packetlogger
 ```python
 from utils import get_nostale_windows, read_current_name

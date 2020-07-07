@@ -1,6 +1,8 @@
 import asyncio
+import queue
+import threading
 from ctypes import *
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Callable, Optional
 import win32api, win32process, win32con, win32gui
 import psutil
 import os.path
@@ -97,9 +99,9 @@ def read_current_name(pid: int) -> str:
 
 def get_nostale_windows() -> List[Dict[str, int]]:
     def callback(hwnd, hwnds):
-        if not win32gui.IsWindowVisible(hwnd) and win32gui.IsWindowEnabled(hwnd):
+        if not win32gui.IsWindowEnabled(hwnd):
             return
-        if win32gui.GetWindowText(hwnd) != "NosTale":
+        if "NosTale" not in win32gui.GetWindowText(hwnd):
             return
         _, pid = win32process.GetWindowThreadProcessId(hwnd)
         hwnds.append({"pid": pid, "hwnd": hwnd})
@@ -172,7 +174,7 @@ def rename_nostale_window(window: Dict[str, int], packet_logger_port: int):
     )
 
 
-async def setup_client(window) -> Tuple[str, int]:
+async def setup_client(window) -> Tuple[int, int]:
     inject_packet_logger(window["pid"])
     await asyncio.sleep(1)  # wait for packet logger to start
     packet_logger = list(filter(lambda x: x["pid"] == window["pid"], get_packet_logger_windows()))[0]
@@ -181,9 +183,76 @@ async def setup_client(window) -> Tuple[str, int]:
     return window["pid"], get_packet_logger_port(packet_logger)
 
 
-async def setup_all_clients() -> List[Tuple[str, int]]:
+async def setup_all_clients() -> List[Tuple[int, int]]:
     windows = get_nostale_windows_wo_packet_logger()
     return await asyncio.gather(*[setup_client(window) for window in windows])
 
+
+## Not tested yet, but should work
+class PacketLoggerWrapper:
+    IP: str = "127.0.0.1"
+    PACKET_SIZE: int = 4096
+    ENCODING = "windows-1252"
+
+    def __init__(self, port: int):
+        self._port = port
+        self._callbacks: List[Callable] = []
+        self._reader: Optional[asyncio.StreamReader] = None
+        self._writer: Optional[asyncio.StreamWriter] = None
+        self._send_queue: queue.Queue = queue.Queue()
+
+    async def _handle_packet(self, packet: List[str]):
+        for callback in self._callbacks:
+            callback(packet)
+
+    async def _receive_task(self):
+        while True:
+            data = await self._reader.read(self.PACKET_SIZE)
+            for packet in data.strip().decode(self.ENCODING).split("\r"):
+                await self._handle_packet(packet.split())
+
+    async def _send_task(self):
+        while True:
+            if not self._send_queue.empty():
+                self._writer.write((self._send_queue.get() + "\r").encode(self.ENCODING))
+                await self._writer.drain()
+            else:
+                await asyncio.sleep(0.01)
+
+    async def _serve(self):
+        print("Start serving.")
+        self._reader, self._writer = await asyncio.open_connection(self.IP, self._port)
+        await asyncio.gather(self._receive_task(), self._send_task())
+        print("Stop serving.")
+
+    def serve(self):
+        threading.Thread(target=lambda: asyncio.run(self._serve())).start()
+
+    def add_callback(self, callback: Callable):
+        self._callbacks.append(callback)
+
+    def remove_callback(self, callback: Callable):
+        self._callbacks.remove(callback)
+
+    async def wait_for_packet(self, selector: Callable, timeout: float = -1):
+        result = None
+
+        def callback(packet: List[str]):
+            nonlocal result
+            if selector(packet):
+                result = packet
+                self.remove_callback(callback)
+
+        self.add_callback(callback)
+        time_counter = 0
+        while result is None and (timeout < 0 or time_counter * 0.05 < timeout):
+            await asyncio.sleep(0.05)
+            time_counter += 1
+
+        return result
+
+
 if __name__ == '__main__':
-    asyncio.run(setup_all_clients())
+    ports = asyncio.run(setup_all_clients())
+
+
