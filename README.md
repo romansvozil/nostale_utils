@@ -24,7 +24,7 @@ for pid, port in pid_port_pairs:
 ```
 
 ## Example 2:
-Creating PacketLoggerWrapper instance and waiting on map change
+Creating PacketLoggerWrapper instance and wait on map change
 ```python
 from utils import setup_all_clients, PacketLoggerWrapper
 from asyncio import run
