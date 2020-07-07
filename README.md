@@ -36,7 +36,7 @@ async def wait_for_map_change():
     while True:
         print("Waiting for map change.")
         if await packet_logger.wait_for_packet(lambda _packet: _packet[1] == "c_map"):
-            print("Map have been changed.")
+            print("Map has been changed.")
 
 run(wait_for_map_change())
 ```
