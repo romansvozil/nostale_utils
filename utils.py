@@ -225,12 +225,18 @@ class PacketLoggerWrapper:
         await asyncio.gather(self._receive_task(), self._send_task())
         print("Stop serving.")
 
-    def send(self, packet: str):
+    def send_raw(self, packet: str):
         # packet has to be in format:
         # "<0 or 1> <real data>"
         # Example:
         # "1 preq" -> sends packet to use portal
         self._send_queue.put(packet)
+
+    def send(self, packet: str):
+        self.send_raw(" ".join(["1", packet]))
+
+    def recv(self, packet: str):
+        self.send_raw(" ".join(["0", packet]))
 
     def serve(self):
         threading.Thread(target=lambda: asyncio.run(self._serve())).start()
