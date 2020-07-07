@@ -30,8 +30,7 @@ from utils import setup_all_clients, PacketLoggerWrapper
 from asyncio import run
 
 async def wait_for_map_change():
-    ports = await setup_all_clients()
-    packet_logger = PacketLoggerWrapper(ports[0][1])
+    packet_logger = PacketLoggerWrapper(8787)
     packet_logger.serve()
     while True:
         print("Waiting for map change.")
