@@ -240,12 +240,17 @@ class PacketLoggerWrapper:
     def remove_callback(self, callback: Callable):
         self._callbacks.remove(callback)
 
-    async def wait_for_packet(self, selector: Callable, timeout: float = None) -> Optional[List[str]]:
+    async def wait_for_packet(self, selectors,
+                              timeout: float = None) -> Optional[List[str]]:
+        # selectors are functions that takes packet as parameter and returns bool
+
         result = None
+        if not isinstance(selectors, list):
+            selectors = [selectors]
 
         def callback(packet: List[str]):
             nonlocal result
-            if selector(packet):
+            if all(selector(packet) for selector in selectors):
                 result = packet
                 self.remove_callback(callback)
 
@@ -260,9 +265,15 @@ class PacketLoggerWrapper:
 
 class Selector:
     @classmethod
-    def header(cls, header: str):
+    def header(cls, header: str) -> Callable:
         def inner(packet: List[str]):
             return len(packet) > 1 and packet[1] == header
+        return inner
+
+    @classmethod
+    def index_eq(cls, index: int, value: str) -> Callable:
+        def inner(packet: List[str]):
+            return len(packet) > index and packet[index] == value
         return inner
 
 
