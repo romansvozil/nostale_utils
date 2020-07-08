@@ -177,7 +177,7 @@ def rename_nostale_window(window: Dict[str, int], packet_logger_port: int):
 async def setup_client(window) -> Tuple[int, int]:
     inject_packet_logger(window["pid"])
     await asyncio.sleep(1)  # wait for packet logger to start
-    packet_logger = list(filter(lambda x: x["pid"] == window["pid"], get_packet_logger_windows()))[0]
+    packet_logger = [x for x in get_packet_logger_windows() if x["pid"] == window["pid"]][0]
     hide_window(packet_logger)
     rename_nostale_window(window, get_packet_logger_port(packet_logger))
     return window["pid"], get_packet_logger_port(packet_logger)
@@ -219,10 +219,8 @@ class PacketLoggerWrapper:
                 await asyncio.sleep(0.01)
 
     async def _serve(self):
-        print("Start serving.")
         self._reader, self._writer = await asyncio.open_connection(self.IP, self._port)
         await asyncio.gather(self._receive_task(), self._send_task())
-        print("Stop serving.")
 
     def serve(self):
         threading.Thread(target=lambda: asyncio.run(self._serve())).start()
@@ -242,7 +240,7 @@ class PacketLoggerWrapper:
     def remove_callback(self, callback: Callable):
         self._callbacks.remove(callback)
 
-    async def wait_for_packet(self, selector: Callable, timeout: float = -1) -> Optional[List[str]]:
+    async def wait_for_packet(self, selector: Callable, timeout: float = None) -> Optional[List[str]]:
         result = None
 
         def callback(packet: List[str]):
@@ -252,10 +250,10 @@ class PacketLoggerWrapper:
                 self.remove_callback(callback)
 
         self.add_callback(callback)
-        time_counter = 0
-        while result is None and (timeout < 0 or time_counter * 0.05 < timeout):
+
+        while result is None and (timeout is None or timeout > 0):
             await asyncio.sleep(0.05)
-            time_counter += 1
+            timeout -= 0.05
 
         return result
 
