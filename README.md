@@ -26,7 +26,7 @@ for pid, port in pid_port_pairs:
 ## Example 2:
 Creating PacketLoggerWrapper instance and wait on map change
 ```python
-from utils import setup_all_clients, PacketLoggerWrapper
+from utils import PacketLoggerWrapper, Selector
 from asyncio import run
 
 async def wait_for_map_change():
@@ -34,7 +34,7 @@ async def wait_for_map_change():
     packet_logger.serve()
     while True:
         print("Waiting for map change.")
-        if await packet_logger.wait_for_packet(lambda _packet: _packet[1] == "c_map"):
+        if await packet_logger.wait_for_packet(Selector.header("c_map")):
             print("Map has been changed.")
 
 run(wait_for_map_change())
