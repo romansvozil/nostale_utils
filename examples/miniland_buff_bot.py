@@ -21,13 +21,13 @@ def create_id_handler(player: Player):
 
 
 def setup_pl_wrapper(port: int, player: Player):
-    pl_wrapper = utils.PacketLoggerWrapper(port)
+    pl_wrapper = utils.TCPClient(port)
     pl_wrapper.serve()
     pl_wrapper.add_callback(create_id_handler(player))
     return pl_wrapper
 
 
-async def cast_all_spells(pl_wrapper: utils.PacketLoggerWrapper, player: Player, target_id: int):
+async def cast_all_spells(pl_wrapper: utils.TCPClient, player: Player, target_id: int):
     for skill in player.skills:
         target_id = player.id if skill[1] else target_id
         pl_wrapper.send(f"u_s {skill[0]} 1 {target_id}")

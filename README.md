@@ -26,11 +26,11 @@ for pid, port in pid_port_pairs:
 ## Example 2:
 Creating PacketLoggerWrapper instance and wait on map change
 ```python
-from utils import PacketLoggerWrapper, Selector
+from utils import TCPClient, Selector
 from asyncio import run
 
 async def wait_for_map_change():
-    packet_logger = PacketLoggerWrapper(8787)
+    packet_logger = TCPClient(8787)
     packet_logger.serve()
     while True:
         print("Waiting for map change.")
@@ -44,7 +44,7 @@ run(wait_for_map_change())
 You can also create custom classes that represents for example your Character
 ```python
 from dataclasses import dataclass
-from utils import PacketLoggerWrapper
+from utils import TCPClient
 from time import sleep
 
 @dataclass
@@ -55,7 +55,7 @@ class Player:
     y: int = 0
     speed: int = 0
 
-packet_logger = PacketLoggerWrapper(63337)
+packet_logger = TCPClient(63337)
 packet_logger.serve()
 
 player = Player()

@@ -195,7 +195,7 @@ async def setup_all_clients() -> List[Tuple[int, int]]:
     return await asyncio.gather(*[setup_client(window) for window in windows])
 
 
-class PacketLoggerWrapper:
+class TCPClient:
     IP: str = "127.0.0.1"
     PACKET_SIZE: int = 4096
     ENCODING: str = "windows-1252"
@@ -207,17 +207,17 @@ class PacketLoggerWrapper:
         self._writer: Optional[asyncio.StreamWriter] = None
         self._send_queue: queue.Queue = queue.Queue()
 
-    async def __handle_packet(self, packet: List[str]):
+    async def _handle_packet(self, packet: List[str]):
         for callback in self._callbacks:
             callback(packet)
 
-    async def __receive_task(self):
+    async def _receive_task(self):
         while True:
             data = await self._reader.read(self.PACKET_SIZE)
             for packet in data.strip().decode(self.ENCODING).split("\r"):
-                await self.__handle_packet(packet.split())
+                await self._handle_packet(packet.split())
 
-    async def __send_task(self):
+    async def _send_task(self):
         while True:
             if not self._send_queue.empty():
                 self._writer.write((self._send_queue.get() + "\r").encode(self.ENCODING))
@@ -225,12 +225,12 @@ class PacketLoggerWrapper:
             else:
                 await asyncio.sleep(0.01)
 
-    async def __serve(self):
+    async def _serve(self):
         self._reader, self._writer = await asyncio.open_connection(self.IP, self._port)
-        await asyncio.gather(self.__receive_task(), self.__send_task())
+        await asyncio.gather(self._receive_task(), self._send_task())
 
     def serve(self):
-        threading.Thread(target=lambda: asyncio.run(self.__serve())).start()
+        threading.Thread(target=lambda: asyncio.run(self._serve())).start()
 
     def send_raw(self, packet: str):
         self._send_queue.put(packet)

@@ -17,7 +17,7 @@ KEYS = ' -.0123456789n'
 
 
 @nb.njit
-def world_decrypt(data: bytes):
+def world_decrypt(data: bytes) -> List[str]:
     output = []
     current_packet = ""
     index = 0
@@ -138,12 +138,12 @@ def first_encryption(packet: str) -> List[int]:
 
 
 @nb.njit
-def bit_neg(num: int):
+def bit_neg(num: int) -> int:
     return 256 - num
 
 
 @nb.njit
-def c_byte(num: int):
+def c_byte(num: int) -> int:
     return c_byte(num + 256) if num < -128 else (c_byte(num - 256) if num > 127 else num)
 
 
@@ -171,7 +171,7 @@ def second_encryption(packet: bytes, session_number: int, session: bool) -> List
 
 
 @nb.njit
-def generate_packet_mask(packet: str):
+def generate_packet_mask(packet: str) -> List[bool]:
     mask = [True] * len(packet)
     for index, character in enumerate(packet):
         o_character = ord(character)
