@@ -103,12 +103,19 @@ def get_nostale_windows() -> List[Dict[str, int]]:
             return
         if "NosTale" not in win32gui.GetWindowText(hwnd):
             return
+        if "[BladeTiger12]" in win32gui.GetWindowText(hwnd):
+            return
         _, pid = win32process.GetWindowThreadProcessId(hwnd)
         hwnds.append({"pid": pid, "hwnd": hwnd})
 
     windows = []
     win32gui.EnumWindows(callback, windows)
     return windows
+
+
+def get_window_pid(window: int) -> int:
+    _, pid = win32process.GetWindowThreadProcessId(window)
+    return pid
 
 
 def get_nostale_windows_wo_packet_logger() -> List[Dict[str, int]]:
@@ -176,7 +183,7 @@ def rename_nostale_window(window: Dict[str, int], packet_logger_port: int):
 
 async def setup_client(window) -> Tuple[int, int]:
     inject_packet_logger(window["pid"])
-    await asyncio.sleep(1)  # wait for packet logger to start
+    await asyncio.sleep(3)  # wait for packet logger to start
     packet_logger = [x for x in get_packet_logger_windows() if x["pid"] == window["pid"]][0]
     hide_window(packet_logger)
     rename_nostale_window(window, get_packet_logger_port(packet_logger))
@@ -279,5 +286,6 @@ class Selector:
 
 if __name__ == '__main__':
     ports = asyncio.run(setup_all_clients())
+    print(ports)
 
 
