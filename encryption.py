@@ -16,7 +16,6 @@ SOURCES:
 KEYS = ' -.0123456789n'
 
 
-@nb.njit
 def world_decrypt(data: bytes) -> List[str]:
     output = []
     current_packet = ""
@@ -68,7 +67,6 @@ def world_encrypt(packet: str, session_number: int, session=False) -> bytearray:
     return bytearray(snd)
 
 
-@nb.njit
 def first_encryption(packet: str) -> List[int]:
     encrypted_packet = []
     packet_mask = generate_packet_mask(packet)
@@ -137,17 +135,14 @@ def first_encryption(packet: str) -> List[int]:
     return encrypted_packet
 
 
-@nb.njit
 def bit_neg(num: int) -> int:
     return 256 - num
 
 
-@nb.njit
 def c_byte(num: int) -> int:
     return c_byte(num + 256) if num < -128 else (c_byte(num - 256) if num > 127 else num)
 
 
-@nb.njit
 def second_encryption(packet: bytes, encryption_key: int, session: bool) -> List[int]:
     session_number = c_byte((encryption_key >> 6) & 0xFF & 0x80000003)
 
@@ -179,7 +174,6 @@ def second_encryption(packet: bytes, encryption_key: int, session: bool) -> List
     return result
 
 
-@nb.njit
 def generate_packet_mask(packet: str) -> List[bool]:
     mask = [True] * len(packet)
     for index, character in enumerate(packet):
@@ -228,6 +222,18 @@ def create_login_packet(session_token: int, installation_guid: str,
     random_value = random.randint(0, 16**8)
     client_md5 = hashlib.md5((nostale_client_x_hash.upper() + nostale_client_hash.upper()).encode("ascii"))
     return f"NoS0577 {session_token} {installation_guid} {random_value:08x} {region_code}{chr(0xB)}{version} 0 {client_md5.hexdigest().upper()}"
+
+
+try:
+    import numba as nb
+    first_encryption = nb.njit(first_encryption)
+    second_encryption = nb.njit(second_encryption)
+    generate_packet_mask = nb.njit(generate_packet_mask)
+    world_decrypt = nb.njit(world_decrypt)
+    c_byte = nb.njit(c_byte)
+    bit_neg = nb.njit(bit_neg)
+except ImportError:
+    pass
 
 
 if __name__ == '__main__':
