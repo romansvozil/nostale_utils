@@ -39,13 +39,13 @@ def world_decrypt(data: bytes) -> List[str]:
                     index += 1
                     firstIndex = ((current_byte & 0xF0) >> 4) - 1
                     first = KEYS[firstIndex] if firstIndex != 14 else '\u0000' if firstIndex != 255 else '?'
-                    if (ord(first) != 0x6E):
+                    if ord(first) != 0x6E:
                         current_packet += first
-                    if (length <= 1):
+                    if length <= 1:
                         break
                     second_index = (current_byte & 0xF) - 1
                     second = KEYS[second_index] if second_index != 14 else '\u0000' if second_index != 255 else '?'
-                    if (ord(second) != 0x6E):
+                    if ord(second) != 0x6E:
                         current_packet += second
                     length -= 2
                 else:
@@ -201,7 +201,7 @@ def generate_packet_mask(packet: str) -> List[bool]:
 def login_decrypt(packet: bytes) -> str:
     result = ''
     for bt in packet:
-        result += chr(bt - 0xF)
+        result += chr((bt - 0xF) % 256)
     return result
 
 
@@ -215,12 +215,12 @@ def login_encrypt(packet: str) -> bytearray:
     return result
 
 
-def create_login_packet(session_token: str, installation_guid: str,
+def create_login_packet(session_token: int, installation_guid: str,
                         region_code: int, version: str,
                         nostale_client_x_hash: str, nostale_client_hash: str):
-    random_value = str(hex(random.randint(0, 16**8)))
+    random_value = random.randint(0, 16**8)
     client_md5 = hashlib.md5((nostale_client_x_hash.upper() + nostale_client_hash.upper()).encode("ascii"))
-    return f"NoS0577 {session_token} {installation_guid} {random_value:08x} {region_code}\xB{version} 0 {client_md5}"
+    return f"NoS0577 {session_token} {installation_guid} {random_value:08x} {region_code}{chr(0xB)}{version} 0 {client_md5.hexdigest()}"
 
 
 if __name__ == '__main__':
