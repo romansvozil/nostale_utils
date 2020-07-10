@@ -62,10 +62,10 @@ def world_decrypt(data: bytes) -> List[str]:
     return output
 
 
-def world_encrypt(packet: str, session_number: int, session=False) -> bytes:
+def world_encrypt(packet: str, session_number: int, session=False) -> bytearray:
     fst = first_encryption(packet)
-    snd = second_encryption(bytes(fst), session_number, session)
-    return bytes(snd)
+    snd = second_encryption(bytearray(fst), session_number, session)
+    return bytearray(snd)
 
 
 @nb.njit
@@ -148,26 +148,35 @@ def c_byte(num: int) -> int:
 
 
 @nb.njit
-def second_encryption(packet: bytes, session_number: int, session: bool) -> List[int]:
-    buffer = []
-    session_key = (session_number + 0x40) % 256
-    xor_key = 0x00
+def second_encryption(packet: bytes, encryption_key: int, session: bool) -> List[int]:
+    session_number = c_byte((encryption_key >> 6) & 0xFF & 0x80000003)
 
-    session_number = (session_number >> 6) & 0x03
+    result = [0] * len(packet)
 
-    if session:
+    if (session_number < 0):
+        session_number = c_byte(((session_number - 1) | 0xFFFFFFFC) + 1)
+
+    session_key = (encryption_key & 0xFF) % 256
+
+    if (session):
         session_number = -1
 
-    if session_number == 1:
-        session_key = bit_neg(session_key)
+    if session_number == 0:
+        for i in range(len(result)):
+            result[i] = (packet[i] + session_key  + 0x40) % 256
+    elif session_number == 1:
+        for i in range(len(packet)):
+            result[i] =(packet[i] - (session_key + 0x40)) % 256
     elif session_number == 2:
-        xor_key = 0xC3
+        for i in range(len(packet)):
+            result[i] = ((packet[i] ^ 0xC3) + session_key + 0x40) % 256
     elif session_number == 3:
-        session_key = bit_neg(session_key)
-        xor_key = 0xC3
-    for character in packet:
-        buffer.append(((character ^ xor_key) + session_key) % 256)
-    return buffer
+        for i in range(len(packet)):
+            result[i] = ((packet[i] ^ 0xC3) - (session_key + 0x40)) % 256
+    else:
+        for i in range(len(packet)):
+            result[i] = (packet[i] + 0x0F) % 256
+    return result
 
 
 @nb.njit
@@ -197,7 +206,6 @@ def generate_packet_mask(packet: str) -> List[bool]:
     return mask
 
 
-@nb.njit
 def login_decrypt(packet: bytes) -> str:
     result = ''
     for bt in packet:
@@ -205,7 +213,6 @@ def login_decrypt(packet: bytes) -> str:
     return result
 
 
-@nb.njit
 def login_encrypt(packet: str) -> bytearray:
     result = bytearray(len(packet) + 1)
     encoded_data = bytearray(packet.encode("ascii"))
@@ -220,7 +227,7 @@ def create_login_packet(session_token: int, installation_guid: str,
                         nostale_client_x_hash: str, nostale_client_hash: str):
     random_value = random.randint(0, 16**8)
     client_md5 = hashlib.md5((nostale_client_x_hash.upper() + nostale_client_hash.upper()).encode("ascii"))
-    return f"NoS0577 {session_token} {installation_guid} {random_value:08x} {region_code}{chr(0xB)}{version} 0 {client_md5.hexdigest()}"
+    return f"NoS0577 {session_token} {installation_guid} {random_value:08x} {region_code}{chr(0xB)}{version} 0 {client_md5.hexdigest().upper()}"
 
 
 if __name__ == '__main__':
