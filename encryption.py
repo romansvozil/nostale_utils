@@ -34,8 +34,8 @@ def world_decrypt(data: bytes) -> List[str]:
                 if index <= len(data):
                     current_byte = data[index]
                     index += 1
-                    firstIndex = ((current_byte & 0xF0) >> 4) - 1
-                    first = KEYS[firstIndex] if firstIndex != 14 else '\u0000' if firstIndex != 255 else '?'
+                    first_index = ((current_byte & 0xF0) >> 4) - 1
+                    first = KEYS[first_index] if first_index != 14 else '\u0000' if first_index != 255 else '?'
                     if ord(first) != 0x6E:
                         current_packet += first
                     if length <= 1:
