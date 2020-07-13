@@ -3,8 +3,6 @@ import random
 import timeit
 from typing import List
 
-import numba as nb
-
 """
 SOURCES:
     - https://www.elitepvpers.com/forum/nostale/3935929-eu-client-cryptography.html
