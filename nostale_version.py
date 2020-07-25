@@ -7,14 +7,6 @@ import asyncio
 import hashlib
 
 
-@dataclass
-class ClientInfo:
-    locale: str
-    client_x_hash: str
-    client_hash: str
-    client_version: str
-
-
 def get_version(data):
     pe = PE(data=data)
     info = pe.VS_FIXEDFILEINFO[0]
@@ -30,6 +22,19 @@ def get_file_hash(data) -> str:
     return hashlib.md5(
         data,
     ).hexdigest()
+
+
+@dataclass
+class ClientInfo:
+    locale: str
+    client_x_hash: str
+    client_hash: str
+    client_version: str
+
+    @classmethod
+    def from_files(cls, client_x, client, locale):
+        return cls(locale, get_file_hash(client_x),
+                          get_file_hash(client), get_version(client))
 
 
 class NostaleDownloader:
@@ -69,10 +74,7 @@ class NostaleDownloader:
                 self.download_file(session, self.filter_url_by_name(entries, self.CLIENT_X)),
                 self.download_file(session, self.filter_url_by_name(entries, self.CLIENT)))
 
-        self._client_info = ClientInfo(self._locale,
-                                       get_file_hash(client_x),
-                                       get_file_hash(client),
-                                       get_version(client))
+        self._client_info = ClientInfo.from_files(client_x, client, self._locale)
 
     @property
     def client_info(self):
