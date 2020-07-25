@@ -1,0 +1,5 @@
+psutil~=5.7.0
+numba~=0.50.1
+numpy~=1.18.5
+aiohttp~=3.6.2
+pefile~=2019.4.18

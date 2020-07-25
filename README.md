@@ -6,21 +6,16 @@ pip install pywin32 psutil
 ```
 
 ## Example 1:
-Inject packet logger into all Nostale instances, hide packetlogger and rename Nostale client to this format 
-`Nostale CHAR_ID: {character_name} PL_PORT: {pl_port}`
-![alt text](https://raw.githubusercontent.com/romansvozil/nostale_packet_logger_utils/master/images/example_1.PNG "Example 1")
-
+Get nostale Client and ClientX info
 ```python
-from utils import setup_all_clients, read_current_name
+from nostale_version import NostaleDownloader
 from asyncio import run
 
-pid_port_pairs = run(setup_all_clients())
-
-for pid, port in pid_port_pairs:
-    print(f"{read_current_name(pid)}: \t{port}")
+print(run(NostaleDownloader.get_client_info('en')))
 
 # Output: 
-# InGameName: 	55154
+# ClientInfo(locale='en', client_x_hash='2888e0c5e363dfedeb4e43c58de795c0', 
+#   client_hash='64b96f54059c7a5830be0c376558048a', client_version='0.9.3.3131')
 ```
 
 ## Example 2:
