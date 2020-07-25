@@ -2,7 +2,7 @@
 
 ## Installation:
 ```shell script
-pip install pywin32 psutil
+pip install -r requrements.txt
 ```
 
 ## Example 1:
