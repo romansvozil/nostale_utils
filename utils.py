@@ -1,100 +1,15 @@
 import asyncio
+import os.path
 import queue
 import threading
-from ctypes import *
 from typing import List, Dict, Tuple, Callable, Optional
-import win32api, win32process, win32con, win32gui
+
 import psutil
-import os.path
+import win32con
+import win32gui
+import win32process
 
 from injector import Injector
-
-ReadProcessMemory = windll.kernel32.ReadProcessMemory
-
-__NOSTALE_EXE_BASE_ADDRESS = 0x400000
-
-# first account name pointer
-# "NostaleClientX.exe"+00486014  + 80  + 0
-__FIRST_CHARACTER = [0x00486014, 0x80, 0x0]
-
-# second account name pointer
-# "NostaleClientX.exe"+00486014  + 12C + 0
-__SECOND_CHARACTER = [0x00486014, 0x12C, 0x0]
-
-# third account name pointer
-# "NostaleClientX.exe"+00486014  + 1D8 + 0
-__THIRD_CHARACTER = [0x00486014, 0x1D8, 0x0]
-
-# fourth account name pointer
-# "NostaleClientX.exe"+00486014  + 284 + 0
-__FOURTH_CHARACTER = [0x00486014, 0x284, 0x0]
-
-# current account index pointer
-# "NostaleClientX.exe"+00486014  + 68
-__CHARACTER_INDEX = [0x00486014, 0x68]
-
-__INDEXES = {
-    0: __FIRST_CHARACTER,
-    1: __SECOND_CHARACTER,
-    2: __THIRD_CHARACTER,
-    3: __FOURTH_CHARACTER,
-}
-
-
-def _read_pointers(process_handle, base: int, offsets: List[int], pointer_size: int = 4) -> int:
-    # returns final address
-    for index, offset in enumerate(offsets):
-        base += offset
-        if index == len(offsets)-1:
-            return base
-        buffer = c_char_p()
-        ReadProcessMemory(process_handle.handle, base, byref(buffer), pointer_size, 0)
-        base = int.from_bytes(buffer, 'little')
-    return base
-
-
-def _read_bytes(process_handle, address: int, size: int = 4) -> bytes:
-    buffer = create_string_buffer(size)
-    ReadProcessMemory(process_handle.handle, address, byref(buffer), size, 0)
-    return bytes(buffer)
-
-
-def _read_ascii_string(process_handle, address: int) -> str:
-    result = b""
-    current_byte = _read_bytes(process_handle, address, 1)
-    while int.from_bytes(current_byte, 'little'):
-        address += 1
-        result += current_byte
-        current_byte = _read_bytes(process_handle, address, 1)
-    return result.decode("ascii")
-
-
-def read_current_name(pid: int) -> str:
-    process_handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, False, pid)
-    assert process_handle
-    account_index = _read_bytes(
-        process_handle,
-        _read_pointers(
-            process_handle,
-            __NOSTALE_EXE_BASE_ADDRESS,
-            __CHARACTER_INDEX
-        )
-    )
-    account_index = int.from_bytes(account_index, 'little')
-    if account_index == 255:
-        return "Character not selected"
-
-    result = _read_ascii_string(
-        process_handle,
-        _read_pointers(
-            process_handle,
-            __NOSTALE_EXE_BASE_ADDRESS,
-            __INDEXES[account_index]
-        ),
-    )
-
-    win32api.CloseHandle(process_handle.handle)
-    return result
 
 
 def get_nostale_windows() -> List[Dict[str, int]]:
@@ -177,7 +92,7 @@ def hide_window(window: Dict[str, int]):
 def rename_nostale_window(window: Dict[str, int], packet_logger_port: int):
     win32gui.SetWindowText(
         window["hwnd"],
-        f"NosTale CHAR_ID: {read_current_name(window['pid'])} PL_PORT: {packet_logger_port}"
+        f"NosTale PL_PORT: {packet_logger_port}"
     )
 
 
@@ -275,17 +190,17 @@ class Selector:
     def header(cls, header: str) -> Callable:
         def inner(packet: List[str]):
             return len(packet) > 1 and packet[1] == header
+
         return inner
 
     @classmethod
     def index_eq(cls, index: int, value: str) -> Callable:
         def inner(packet: List[str]):
             return len(packet) > index and packet[index] == value
+
         return inner
 
 
 if __name__ == '__main__':
     ports = asyncio.run(setup_all_clients())
     print(ports)
-
-
