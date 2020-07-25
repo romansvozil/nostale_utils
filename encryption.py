@@ -34,13 +34,13 @@ def world_decrypt(data: bytes) -> List[str]:
                 if index <= len(data):
                     current_byte = data[index]
                     index += 1
-                    first_index = ((current_byte & 0xF0) >> 4) - 1
+                    first_index = (((current_byte & 0xF0) >> 4) - 1) % 256
                     first = KEYS[first_index] if first_index != 14 else '\u0000' if first_index != 255 else '?'
                     if ord(first) != 0x6E:
                         current_packet += first
                     if length <= 1:
                         break
-                    second_index = (current_byte & 0xF) - 1
+                    second_index = ((current_byte & 0xF) - 1) % 256
                     second = KEYS[second_index] if second_index != 14 else '\u0000' if second_index != 255 else '?'
                     if ord(second) != 0x6E:
                         current_packet += second
@@ -222,16 +222,15 @@ def create_login_packet(session_token: int, installation_guid: str,
     return f"NoS0577 {session_token} {installation_guid} {random_value:08x} {region_code}{chr(0xB)}{version} 0 {client_md5.hexdigest().upper()}"
 
 
-try:
+def use_numba():
     import numba as nb
+    global first_encryption, second_encryption, generate_packet_mask, world_decrypt, c_byte, bit_neg
     first_encryption = nb.njit(first_encryption)
     second_encryption = nb.njit(second_encryption)
     generate_packet_mask = nb.njit(generate_packet_mask)
     world_decrypt = nb.njit(world_decrypt)
     c_byte = nb.njit(c_byte)
     bit_neg = nb.njit(bit_neg)
-except ImportError:
-    pass
 
 
 if __name__ == '__main__':
