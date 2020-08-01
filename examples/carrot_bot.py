@@ -44,10 +44,19 @@ class Carrot:
         return cls(int(packet[5]),int(packet[6]), int(packet[4]), 0)
 
     def mine(self, client: TCPClient):
+        client.send(NCIF_PACKET.format(carrot_id=self.id))
         client.send(MINE_CARROT_PACKET.format(carrot_id=self.id))
+
+        for _ in range(MINING_TIME):
+            sleep(1)
+            client.send(NCIF_PACKET.format(carrot_id=self.id))
+        self.last_mine = time() + randint(3, 10)
 
     def in_range(self):
         return ((self.x - player_position[0]) ** 2 + (self.y - player_position[1]) ** 2) ** 1/2 <= COLLECT_RANGE
+
+    def can_collect(self):
+        return self.last_mine + CARROT_TIMEOUT < time()
 
 
 def sent_packets_logger(packet: List[str]):
@@ -91,14 +100,9 @@ def mine(client: TCPClient):
             return
 
         for carrot in carrots.values():
-            if carrot.in_range() and carrot.last_mine + CARROT_TIMEOUT < time():
-                client.send(NCIF_PACKET.format(carrot_id=carrot.id))
+            if carrot.in_range() and carrot.can_collect():
                 logging.info(f'Mining carrot with id: {carrot.id}')
                 carrot.mine(client)
-                for _ in range(MINING_TIME):
-                    sleep(1)
-                    client.send(NCIF_PACKET.format(carrot_id=carrot.id))
-                carrot.last_mine = time() + randint(3, 10)
             sleep(1)
 
 
