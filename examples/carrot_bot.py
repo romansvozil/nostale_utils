@@ -7,33 +7,32 @@ from time import sleep, time
 from typing import List
 import logging
 
-logging.basicConfig(level=logging.INFO)
-
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
-
 from utils import TCPClient
 
-NPC_ID = 2
-CARROT_ID = 2365
+
+logging.basicConfig(level=logging.INFO)
+
+NPC_TYPE = 2
 
 # packets
-MINE_CARROT_PACKET = 'npc_req 2 {carrot_id}'
-NCIF_PACKET = 'ncif 2 {carrot_id}'
+MINE_PACKET = 'npc_req 2 {id}'
+NCIF_PACKET = 'ncif 2 {id}'
 
-MINING_TIME = 7
 
 # settings
-CARROT_TIMEOUT = 45
-COLLECT_RANGE = 7
+NPC_ID = 2365           # npc to collect
+MINING_TIME = 7         # how long it takes to collect one thing in seconds
+MINING_TIMEOUT = 45     # time to wait between collecting the same thing
+COLLECT_RANGE = 7       # collect range ;)
 
-
-carrots = {}  # carrots currently on map
-
+# globals
+npcs = {}  # carrots currently on map
 player_position = (-1, -1)
 
 
 @dataclass
-class Carrot:
+class NPC:
     x: int
     y: int
     id: int
@@ -44,19 +43,19 @@ class Carrot:
         return cls(int(packet[5]),int(packet[6]), int(packet[4]), 0)
 
     def mine(self, client: TCPClient):
-        client.send(NCIF_PACKET.format(carrot_id=self.id))
-        client.send(MINE_CARROT_PACKET.format(carrot_id=self.id))
+        client.send(NCIF_PACKET.format(id=self.id))
+        client.send(MINE_PACKET.format(id=self.id))
 
         for _ in range(MINING_TIME):
             sleep(1)
-            client.send(NCIF_PACKET.format(carrot_id=self.id))
+            client.send(NCIF_PACKET.format(id=self.id))
         self.last_mine = time() + randint(3, 10)
 
     def in_range(self):
         return ((self.x - player_position[0]) ** 2 + (self.y - player_position[1]) ** 2) ** 1/2 <= COLLECT_RANGE
 
     def can_collect(self):
-        return self.last_mine + CARROT_TIMEOUT < time()
+        return self.last_mine + MINING_TIMEOUT < time()
 
 
 def sent_packets_logger(packet: List[str]):
@@ -64,21 +63,21 @@ def sent_packets_logger(packet: List[str]):
         logging.debug(f'Send: {" ".join(packet[1:])}')
 
 
-def carrot_handler(packet: List[str]):
+def npc_handler(packet: List[str]):
     if len(packet) < 2 or packet[0] != '0' or packet[1] != 'in':
         return
-    if int(packet[2]) != NPC_ID or int(packet[3]) != CARROT_ID:
+    if int(packet[2]) != NPC_TYPE or int(packet[3]) != NPC_ID:
         return
-    carrot = Carrot.from_packet(packet)
-    logging.info(f'Found carrot with id: {carrot.id} on position ({carrot.x}, {carrot.y})')
-    carrots[carrot.id] = carrot
+    npc = NPC.from_packet(packet)
+    logging.info(f'Found npc with id: {npc.id} on position ({npc.x}, {npc.y})')
+    npcs[npc.id] = npc
 
 
 def map_change_handler(packet: List[str]):
     if len(packet) < 2 or packet[0] != '0' or packet[1] != 'c_map':
         return
     logging.info('Map has been changed.')
-    carrots.clear()
+    npcs.clear()
 
 
 def position_handler(packet: List[str]):
@@ -89,20 +88,20 @@ def position_handler(packet: List[str]):
 
 
 def init_handlers(client: TCPClient):
-    for handler in [carrot_handler, map_change_handler, position_handler, sent_packets_logger]:
+    for handler in [npc_handler, map_change_handler, position_handler, sent_packets_logger]:
         client.add_callback(handler)
 
 
 def mine(client: TCPClient):
     while True:
-        if not carrots:
-            logging.error('No carrots on map.')
+        if not npcs:
+            logging.error('No npc\'s on map.')
             return
 
-        for carrot in carrots.values():
-            if carrot.in_range() and carrot.can_collect():
-                logging.info(f'Mining carrot with id: {carrot.id}')
-                carrot.mine(client)
+        for npc in npcs.values():
+            if npc.in_range() and npc.can_collect():
+                logging.info(f'Mining npc with id: {npc.id}')
+                npc.mine(client)
             sleep(1)
 
 
