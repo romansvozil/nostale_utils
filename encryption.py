@@ -146,12 +146,12 @@ def second_encryption(packet: bytes, encryption_key: int, session: bool) -> List
 
     result = [0] * len(packet)
 
-    if (session_number < 0):
+    if session_number < 0:
         session_number = c_byte(((session_number - 1) | 0xFFFFFFFC) + 1)
 
     session_key = (encryption_key & 0xFF) % 256
 
-    if (session):
+    if session:
         session_number = -1
 
     if session_number == 0:
@@ -223,12 +223,16 @@ def create_login_packet(session_token: int, installation_guid: str,
 
 
 def use_numba():
+    """
+    First time you call these functions it can take up to few seconds to compile them with numba
+    """
     import numba as nb
     global first_encryption, second_encryption, generate_packet_mask, world_decrypt, c_byte, bit_neg
     first_encryption = nb.njit(first_encryption)
     second_encryption = nb.njit(second_encryption)
     generate_packet_mask = nb.njit(generate_packet_mask)
     world_decrypt = nb.njit(world_decrypt)
+    print(nb.typeof(world_decrypt))
     c_byte = nb.njit(c_byte)
     bit_neg = nb.njit(bit_neg)
 

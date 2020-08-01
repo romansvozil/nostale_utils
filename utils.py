@@ -145,7 +145,9 @@ class TCPClient:
         await asyncio.gather(self._receive_task(), self._send_task())
 
     def serve(self):
-        threading.Thread(target=lambda: asyncio.run(self._serve())).start()
+        thread = threading.Thread(target=lambda: asyncio.run(self._serve()))
+        thread.daemon = True
+        thread.start()
 
     def send_raw(self, packet: str):
         self._send_queue.put(packet)
