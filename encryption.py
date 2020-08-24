@@ -10,13 +10,12 @@ SOURCES:
     - https://github.com/morsisko/NosTale-Auth
 """
 
-
 KEYS = ' -.0123456789n'
 
 
 def world_decrypt(data: bytes) -> List[str]:
     output = []
-    current_packet = ""
+    current_packet = b''
     index = 0
 
     while index < len(data):
@@ -24,7 +23,7 @@ def world_decrypt(data: bytes) -> List[str]:
         index += 1
         if current_byte == 0xFF:
             output.append(current_packet)
-            current_packet = ""
+            current_packet = b''
             continue
 
         length = current_byte & 0x7F
@@ -35,14 +34,14 @@ def world_decrypt(data: bytes) -> List[str]:
                     current_byte = data[index]
                     index += 1
                     first_index = (((current_byte & 0xF0) >> 4) - 1) % 256
-                    first = KEYS[first_index] if first_index != 14 else '\u0000' if first_index != 255 else '?'
-                    if ord(first) != 0x6E:
+                    first = ord(KEYS[first_index]) if first_index != 14 else ord('\u0000') if first_index != 255 else ord('?')
+                    if first != 0x6E:
                         current_packet += first
                     if length <= 1:
                         break
                     second_index = ((current_byte & 0xF) - 1) % 256
-                    second = KEYS[second_index] if second_index != 14 else '\u0000' if second_index != 255 else '?'
-                    if ord(second) != 0x6E:
+                    second = ord(KEYS[second_index]) if second_index != 14 else ord('\u0000') if second_index != 255 else ord('?')
+                    if second != 0x6E:
                         current_packet += second
                     length -= 2
                 else:
@@ -50,22 +49,22 @@ def world_decrypt(data: bytes) -> List[str]:
         else:
             while length != 0:
                 if index < len(data):
-                    current_packet += chr(data[index] ^ 0xFF)
+                    current_packet += data[index] ^ 0xFF
                     index += 1
                 elif index == len(data):
-                    current_packet += chr(0xFF)
+                    current_packet += 0xFF
                     index += 1
                 length -= 1
-    return output
+    return [packet.decode('utf-8') for packet in output]
 
 
 def world_encrypt(packet: str, session_number: int, session=False) -> bytearray:
-    fst = first_encryption(packet)
+    fst = first_encryption(packet.encode('utf-8'))
     snd = second_encryption(bytearray(fst), session_number, session)
     return bytearray(snd)
 
 
-def first_encryption(packet: str) -> List[int]:
+def first_encryption(packet: bytes) -> List[int]:
     encrypted_packet = []
     packet_mask = generate_packet_mask(packet)
     packet_length = len(packet)
@@ -84,12 +83,12 @@ def first_encryption(packet: str) -> List[int]:
             for i in range(length):
                 if i == sequence_counter * 0x7E:
                     if sequences == 0:
-                        encrypted_packet.append(length-i)
+                        encrypted_packet.append(length - i)
                     else:
                         encrypted_packet.append(0x7E)
                         sequences -= 1
                         sequence_counter += 1
-                encrypted_packet.append(ord(packet[last_position]) ^ 0xFF)
+                encrypted_packet.append(packet[last_position] ^ 0xFF)
                 last_position += 1
 
         if current_position >= packet_length:
@@ -105,13 +104,13 @@ def first_encryption(packet: str) -> List[int]:
             for i in range(length):
                 if i == sequence_counter * 0x7E:
                     if sequences == 0:
-                        encrypted_packet.append((length-i) | 0x80)
+                        encrypted_packet.append((length - i) | 0x80)
                     else:
                         encrypted_packet.append(0x7E | 0x80)
                         sequences -= 1
                         sequence_counter += 1
 
-                current_byte = ord(packet[last_position])
+                current_byte = packet[last_position]
                 if current_byte == 0x20:
                     current_byte = 1
                 elif current_byte == 0x2D:
@@ -125,9 +124,10 @@ def first_encryption(packet: str) -> List[int]:
 
                 if current_byte != 0x00:
                     if i % 2 == 0:
-                        encrypted_packet.append(current_byte << 4)
+                        encrypted_packet.append((current_byte << 4) % 256)
                     else:
-                        encrypted_packet[len(encrypted_packet)-1] |= current_byte
+                        encrypted_packet[len(encrypted_packet) - 1] = (encrypted_packet[len(
+                            encrypted_packet) - 1] | current_byte) % 256
                 last_position += 1
     encrypted_packet.append(0xFF)
     return encrypted_packet
@@ -156,10 +156,10 @@ def second_encryption(packet: bytes, encryption_key: int, session: bool) -> List
 
     if session_number == 0:
         for i in range(len(result)):
-            result[i] = (packet[i] + session_key  + 0x40) % 256
+            result[i] = (packet[i] + session_key + 0x40) % 256
     elif session_number == 1:
         for i in range(len(packet)):
-            result[i] =(packet[i] - (session_key + 0x40)) % 256
+            result[i] = (packet[i] - (session_key + 0x40)) % 256
     elif session_number == 2:
         for i in range(len(packet)):
             result[i] = ((packet[i] ^ 0xC3) + session_key + 0x40) % 256
@@ -172,26 +172,25 @@ def second_encryption(packet: bytes, encryption_key: int, session: bool) -> List
     return result
 
 
-def generate_packet_mask(packet: str) -> List[bool]:
+def generate_packet_mask(packet: bytes) -> List[bool]:
     mask = [True] * len(packet)
     for index, character in enumerate(packet):
-        o_character = ord(character)
-        if character in "#/%":
+        if character in [35, 47, 37]:
             mask[index] = False
             continue
-        o_character = c_byte(o_character - 0x20)
-        if o_character == 0:
+        character = c_byte(character - 0x20)
+        if character == 0:
             mask[index] = True
             continue
-        o_character = c_byte(o_character + 0xF1)
-        if o_character < 0:
+        character = c_byte(character + 0xF1)
+        if character < 0:
             mask[index] = True
             continue
-        o_character = c_byte(o_character - 0xB)
-        if o_character < 0:
+        character = c_byte(character - 0xB)
+        if character < 0:
             mask[index] = True
             continue
-        if c_byte(o_character - 0xC5) == 0:
+        if c_byte(character - 0xC5) == 0:
             mask[index] = True
             continue
         mask[index] = False
@@ -199,15 +198,15 @@ def generate_packet_mask(packet: str) -> List[bool]:
 
 
 def login_decrypt(packet: bytes) -> str:
-    result = ''
+    result = b''
     for bt in packet:
-        result += chr((bt - 0xF) % 256)
-    return result
+        result += (bt - 0xF) % 256
+    return result.decode('utf-8')
 
 
 def login_encrypt(packet: str) -> bytearray:
     result = bytearray(len(packet) + 1)
-    encoded_data = bytearray(packet.encode("ascii"))
+    encoded_data = packet.encode("utf-8")
     for i, value in enumerate(encoded_data):
         result[i] = ((value ^ 0xC3) + 0xF) % 256
     result[-1] = 0xD8
@@ -217,7 +216,7 @@ def login_encrypt(packet: str) -> bytearray:
 def create_login_packet(session_token: int, installation_guid: str,
                         region_code: int, version: str,
                         nostale_client_x_hash: str, nostale_client_hash: str):
-    random_value = random.randint(0, 16**8)
+    random_value = random.randint(0, 16 ** 8)
     client_md5 = hashlib.md5((nostale_client_x_hash.upper() + nostale_client_hash.upper()).encode("ascii"))
     return f"NoS0577 {session_token} {installation_guid} {random_value:08x} {region_code}{chr(0xB)}{version} 0 {client_md5.hexdigest().upper()}"
 
@@ -238,5 +237,6 @@ def use_numba():
 
 
 if __name__ == '__main__':
-    print(world_encrypt("pulse 60", 5))
-    print(timeit.timeit(lambda: world_encrypt("pulse 60", 5), number=100000))
+    print([world_encrypt(f"#u_i^1^{i}^2^{i}^1", i) for i in range(30000)])
+    # print(world_encrypt("pulse 60", 5))
+    # print(timeit.timeit(lambda: world_encrypt("pulse 60", 5), number=100000))
